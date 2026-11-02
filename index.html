@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BPMN layout</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='6' width='28' height='20' rx='2' fill='none' stroke='%232350B0' stroke-width='2.5'/><line x1='8' y1='6' x2='8' y2='26' stroke='%232350B0' stroke-width='2.5'/><line x1='8' y1='16' x2='30' y2='16' stroke='%232350B0' stroke-width='2.5'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="vendor.css">
+  <style>
+    :root {
+      --paper: #F5F6F3;
+      --surface: #FFFFFF;
+      --ink: #1C2629;
+      --muted: #5B6669;
+      --rule: #D3D8D5;
+      --accent: #2350B0;
+      --accent-ink: #FFFFFF;
+      --accent-soft: #E6ECF8;
+      --warn: #8A5A00;
+      --warn-soft: #FBF1DC;
+      --error: #B3261E;
+      --error-soft: #FBE7E5;
+      --canvas: #FFFFFF;
+      --lane: #8E9895;
+      color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #141819;
+        --surface: #1B2022;
+        --ink: #E4E8E6;
+        --muted: #9AA5A8;
+        --rule: #333B3E;
+        --accent: #8DAAF2;
+        --accent-ink: #10203F;
+        --accent-soft: #22304A;
+        --warn: #E0B25C;
+        --warn-soft: #2E2716;
+        --error: #F2867E;
+        --error-soft: #3A1E1C;
+        --canvas: #F2F3F0;
+        --lane: #66716E;
+        color-scheme: dark;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 28px 32px 20px;
+      max-width: 72ch;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      line-height: 1.2;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0 32px 32px;
+      min-height: 0;
+    }
+
+    button, .button {
+      font: inherit;
+      font-size: 15px;
+      font-weight: 500;
+      border-radius: 6px;
+      padding: 7px 14px;
+      border: 1px solid var(--rule);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    button:hover, .button:hover { border-color: var(--muted); }
+
+    button.primary, .button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    button:focus-visible, .button:focus-visible, .pool:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* Empty state: an empty pool with three lanes is the drop target */
+    .pool {
+      flex: 1;
+      min-height: 360px;
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      border: 2px solid var(--lane);
+      border-radius: 4px;
+      background: var(--surface);
+      cursor: pointer;
+      transition: border-color 120ms ease, background-color 120ms ease;
+    }
+
+    .pool-header {
+      border-right: 2px solid var(--lane);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pool-header span {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .lanes {
+      display: grid;
+      grid-template-rows: 1fr 1.4fr 1fr;
+    }
+
+    .lane {
+      border-bottom: 1px dashed var(--lane);
+    }
+
+    .lane:last-child { border-bottom: none; }
+
+    .lane.middle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .drop-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .drop-note {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 48ch;
+    }
+
+    .pool.dragging {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .pool.dragging .pool-header { border-right-color: var(--accent); }
+    .pool.dragging .lane { border-bottom-color: var(--accent); }
+
+    /* Result state */
+    .result {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      min-height: 0;
+      gap: 12px;
+    }
+
+    .result.visible { display: flex; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 16px;
+    }
+
+    .file-info {
+      flex: 1 1 260px;
+      min-width: 0;
+    }
+
+    .file-name {
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .file-stats {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .canvas {
+      flex: 1;
+      min-height: 420px;
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      background: var(--canvas);
+      overflow: hidden;
+      position: relative;
+    }
+
+
+    /* Messages */
+    .message {
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 15px;
+    }
+
+    .message h2 {
+      font-size: 16px;
+      margin: 0 0 4px;
+      font-weight: 600;
+    }
+
+    .message p { margin: 0; }
+
+    .message ul {
+      margin: 6px 0 0;
+      padding-left: 20px;
+    }
+
+    .message li + li { margin-top: 2px; }
+
+    .message.warn {
+      background: var(--warn-soft);
+      border-left: 4px solid var(--warn);
+    }
+
+    .message.error {
+      background: var(--error-soft);
+      border-left: 4px solid var(--error);
+      margin-bottom: 12px;
+    }
+
+    .message code {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.9em;
+    }
+
+    .hidden { display: none !important; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 640px) {
+      header { padding: 20px 16px 16px; }
+      main { padding: 0 16px 16px; }
+      h1 { font-size: 24px; }
+      .pool { grid-template-columns: 36px 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .pool { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BPMN layout</h1>
+    <p>Turns a logic-only BPMN 2.0 file into a laid-out diagram, including pools, lanes and message flows. Everything runs in your browser; your file is never uploaded.</p>
+  </header>
+
+  <main>
+    <div id="error" class="message error hidden" role="alert"></div>
+
+    <div id="dropZone" class="pool" tabindex="0" role="button" aria-label="Choose a BPMN file, or drop one here">
+      <div class="pool-header" aria-hidden="true"><span>Your process</span></div>
+      <div class="lanes">
+        <div class="lane" aria-hidden="true"></div>
+        <div class="lane middle">
+          <p class="drop-title">Drop a .bpmn file here</p>
+          <span class="button primary" aria-hidden="true">Choose file</span>
+          <p class="drop-note">The file needs the process logic: tasks, events, gateways, flows and lanes. Any existing positions are replaced.</p>
+        </div>
+        <div class="lane" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <input id="fileInput" type="file" accept=".bpmn,.xml,application/xml,text/xml" class="sr-only" tabindex="-1">
+
+    <section id="result" class="result" aria-live="polite">
+      <div class="toolbar">
+        <div class="file-info">
+          <div id="fileName" class="file-name"></div>
+          <div id="fileStats" class="file-stats"></div>
+        </div>
+        <div class="actions">
+          <button id="fitButton" type="button">Fit to screen</button>
+          <button id="svgButton" type="button">Download SVG</button>
+          <button id="downloadButton" type="button" class="primary">Download BPMN</button>
+          <button id="anotherButton" type="button">Choose another file</button>
+        </div>
+      </div>
+
+      <div id="warnings" class="message warn hidden"></div>
+
+      <div class="canvas">
+        <div id="canvas" style="width:100%;height:100%;position:absolute;inset:0"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="vendor.js"></script>
+  <script>
+    const { layoutProcess, NavigatedViewer } = window.BpmnTools;
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const result = document.getElementById('result');
+    const errorBox = document.getElementById('error');
+    const warningsBox = document.getElementById('warnings');
+
+    const viewer = new NavigatedViewer({ container: '#canvas' });
+
+    let layoutedXml = null;
+    let baseName = 'diagram';
+
+    // ---------- File input ----------
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        fileInput.click();
+      }
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) handleFile(fileInput.files[0]);
+      fileInput.value = '';
+    });
+
+    // Accept drops anywhere on the page, highlight the pool while dragging
+    let dragDepth = 0;
+    window.addEventListener('dragenter', (event) => {
+      event.preventDefault();
+      dragDepth++;
+      dropZone.classList.add('dragging');
+    });
+    window.addEventListener('dragleave', () => {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) dropZone.classList.remove('dragging');
+    });
+    window.addEventListener('dragover', (event) => event.preventDefault());
+    window.addEventListener('drop', (event) => {
+      event.preventDefault();
+      dragDepth = 0;
+      dropZone.classList.remove('dragging');
+      const file = event.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    document.getElementById('anotherButton').addEventListener('click', () => fileInput.click());
+    document.getElementById('fitButton').addEventListener('click', fitDiagram);
+    document.getElementById('downloadButton').addEventListener('click', () => {
+      download(layoutedXml, baseName + '.layouted.bpmn', 'application/xml');
+    });
+    document.getElementById('svgButton').addEventListener('click', async () => {
+      const { svg } = await viewer.saveSVG();
+      download(svg, baseName + '.svg', 'image/svg+xml');
+    });
+
+    // ---------- Main flow ----------
+
+    async function handleFile(file) {
+      hideError();
+      baseName = file.name.replace(/\.(bpmn|xml)$/i, '').replace(/\.layouted$/i, '');
+
+      const text = await file.text();
+
+      const xmlProblem = checkWellFormed(text);
+      if (xmlProblem) {
+        return showError('This file isn’t valid XML',
+          'The file couldn’t be read as XML. ' + xmlProblem +
+          ' Check that the whole file was copied, including the closing </bpmn:definitions> tag.');
+      }
+
+      let output;
+      try {
+        output = await layoutProcess(text);
+      } catch (error) {
+        return showError('The layout couldn’t be created', explainLayoutError(error));
+      }
+
+      layoutedXml = output.xml;
+
+      try {
+        await viewer.importXML(layoutedXml);
+      } catch (error) {
+        return showError('The diagram couldn’t be displayed',
+          'The layout was created, but the viewer couldn’t draw it: ' + error.message);
+      }
+
+      showResult(file.name, text, output.warnings);
+    }
+
+    function showResult(fileName, sourceXml, layoutWarnings) {
+      const registry = viewer.get('elementRegistry');
+      const all = registry.getAll();
+      const count = (type) => all.filter((element) => element.type === type).length;
+      const lanes = count('bpmn:Lane');
+      const pools = count('bpmn:Participant');
+      const flowNodes = all.filter((element) =>
+        element.businessObject && element.businessObject.$instanceOf &&
+        element.businessObject.$instanceOf('bpmn:FlowNode') && element.type !== 'label').length;
+
+      document.getElementById('fileName').textContent = fileName;
+      const parts = [plural(flowNodes, 'element')];
+      if (pools) parts.push(plural(pools, 'pool'));
+      if (lanes) parts.push(plural(lanes, 'lane'));
+      document.getElementById('fileStats').textContent = 'Laid out ' + joinList(parts) + '. Drag to move, scroll to zoom.';
+
+      renderWarnings(collectWarnings(sourceXml, layoutWarnings));
+
+      dropZone.classList.add('hidden');
+      result.classList.add('visible');
+      // Wait two frames so the canvas has its final size before fitting
+      requestAnimationFrame(() => requestAnimationFrame(fitDiagram));
+    }
+
+    function fitDiagram() {
+      const canvas = viewer.get('canvas');
+      canvas.resized();
+      canvas.zoom('fit-viewport', 'auto');
+      // Leave a little margin around the diagram
+      const box = canvas.viewbox();
+      canvas.zoom(box.scale * 0.95, { x: box.outer.width / 2, y: box.outer.height / 2 });
+    }
+
+    // ---------- Checks and messages ----------
+
+    function checkWellFormed(text) {
+      const doc = new DOMParser().parseFromString(text, 'application/xml');
+      const parserError = doc.querySelector('parsererror');
+      if (!parserError) return null;
+      const match = (parserError.textContent || '').match(/line \d+(?: at column \d+)?/i);
+      return match ? 'The first problem is on ' + match[0] + '.' : '';
+    }
+
+    // Elements in a process that has lanes but are not listed in any lane.
+    // The layout engine does not warn about these, so the page does.
+    function findUnassignedElements(text) {
+      const doc = new DOMParser().parseFromString(text, 'application/xml');
+      const BPMN = 'http://www.omg.org/spec/BPMN/20100524/MODEL';
+      const missing = [];
+      const isFlowNode = (name) =>
+        /(Task|task|Event|Gateway)$/.test(name) || name === 'subProcess' || name === 'callActivity' || name === 'transaction';
+
+      for (const process of doc.getElementsByTagNameNS(BPMN, 'process')) {
+        const refs = new Set(Array.from(process.getElementsByTagNameNS(BPMN, 'flowNodeRef'))
+          .map((ref) => ref.textContent.trim()));
+        if (process.getElementsByTagNameNS(BPMN, 'lane').length === 0) continue;
+
+        for (const child of process.children) {
+          if (child.namespaceURI === BPMN && isFlowNode(child.localName) && !refs.has(child.getAttribute('id'))) {
+            missing.push(child.getAttribute('name') || child.getAttribute('id'));
+          }
+        }
+      }
+      return missing;
+    }
+
+    function collectWarnings(sourceXml, layoutWarnings) {
+      const items = [];
+      const unassigned = findUnassignedElements(sourceXml);
+      if (unassigned.length) {
+        items.push({
+          text: 'Not assigned to any lane, so the position may be wrong: ' + unassigned.join(', ') +
+            '. Add a <flowNodeRef> for each one in the right lane.'
+        });
+      }
+      for (const warning of layoutWarnings || []) {
+        const name = elementName(warning.elementId);
+        items.push({ text: (name ? name + ': ' : '') + warning.message });
+      }
+      return items;
+    }
+
+    function renderWarnings(items) {
+      if (!items.length) {
+        warningsBox.classList.add('hidden');
+        return;
+      }
+      warningsBox.innerHTML = '';
+      const heading = document.createElement('h2');
+      heading.textContent = items.length === 1 ? 'Check this before using the file' : 'Check these before using the file';
+      const list = document.createElement('ul');
+      for (const item of items) {
+        const li = document.createElement('li');
+        li.textContent = item.text;
+        list.appendChild(li);
+      }
+      warningsBox.append(heading, list);
+      warningsBox.classList.remove('hidden');
+    }
+
+    function explainLayoutError(error) {
+      const message = error && error.message ? error.message : String(error);
+      if (/failed to parse document as <bpmn:Definitions>/i.test(message)) {
+        return 'The file is XML, but not BPMN 2.0. It needs a <bpmn:definitions> root element with the namespace http://www.omg.org/spec/BPMN/20100524/MODEL.';
+      }
+      if (error && error.code === 'INVALID_SEQUENCE_FLOW_ENDPOINT') {
+        return 'A sequence flow points to an element that doesn’t exist. Check the sourceRef and targetRef values. Details: ' + message;
+      }
+      if (error && error.code === 'INVALID_MESSAGE_FLOW_ENDPOINT') {
+        return 'A message flow points to an element that doesn’t exist. Check the sourceRef and targetRef values. Details: ' + message;
+      }
+      if (error && error.code === 'INVALID_BOUNDARY_HOST') {
+        return 'A boundary event is attached to a task that doesn’t exist. Check its attachedToRef value. Details: ' + message;
+      }
+      return message;
+    }
+
+    function elementName(id) {
+      if (!id) return '';
+      const element = viewer.get('elementRegistry').get(id);
+      return (element && element.businessObject && element.businessObject.name) || id;
+    }
+
+    function showError(title, text) {
+      // Go back to the empty state so an old diagram isn't mistaken for this file's result
+      layoutedXml = null;
+      result.classList.remove('visible');
+      dropZone.classList.remove('hidden');
+      errorBox.innerHTML = '';
+      const heading = document.createElement('h2');
+      heading.textContent = title;
+      const body = document.createElement('p');
+      body.textContent = text;
+      errorBox.append(heading, body);
+      errorBox.classList.remove('hidden');
+    }
+
+    function hideError() {
+      errorBox.classList.add('hidden');
+    }
+
+    // ---------- Helpers ----------
+
+    function download(content, fileName, type) {
+      const url = URL.createObjectURL(new Blob([content], { type }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function plural(n, word) {
+      return n + ' ' + word + (n === 1 ? '' : 's');
+    }
+
+    function joinList(parts) {
+      if (parts.length < 2) return parts.join('');
+      return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
+    }
+
+    window.addEventListener('resize', () => viewer.get('canvas').resized());
+  </script>
+</body>
+</html>
