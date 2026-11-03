@@ -294,6 +294,22 @@
     @media (prefers-reduced-motion: reduce) {
       .pool { transition: none; }
     }
+
+    /* Bolder context pad icons */
+    .djs-context-pad {
+      --bio-text-subtlest: hsl(225, 10%, 20%);
+      --bio-text-subtle: hsl(225, 10%, 20%);
+      --bio-text: hsl(225, 10%, 10%);
+      --bio-border: hsl(225, 10%, 30%);
+    }
+
+    .djs-context-pad .entry:hover {
+      background: var(--accent-soft) !important;
+      --bio-text-subtlest: var(--accent);
+      --bio-text-subtle: var(--accent);
+      --bio-text: var(--accent);
+      --bio-border: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -344,7 +360,7 @@
 
   <script src="vendor.js"></script>
   <script>
-    const { layoutProcess, NavigatedViewer } = window.BpmnTools;
+    const { layoutProcess, Modeler } = window.BpmnTools;
 
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
@@ -352,7 +368,7 @@
     const errorBox = document.getElementById('error');
     const warningsBox = document.getElementById('warnings');
 
-    const viewer = new NavigatedViewer({ container: '#canvas' });
+    const viewer = new Modeler({ container: '#canvas' });
 
     let layoutedXml = null;
     let baseName = 'diagram';
@@ -394,8 +410,9 @@
 
     document.getElementById('anotherButton').addEventListener('click', () => fileInput.click());
     document.getElementById('fitButton').addEventListener('click', fitDiagram);
-    document.getElementById('downloadButton').addEventListener('click', () => {
-      download(layoutedXml, baseName + '.layouted.bpmn', 'application/xml');
+    document.getElementById('downloadButton').addEventListener('click', async () => {
+      const { xml } = await viewer.saveXML({ format: true });
+      download(xml, baseName + '.layouted.bpmn', 'application/xml');
     });
     document.getElementById('svgButton').addEventListener('click', async () => {
       const { svg } = await viewer.saveSVG();

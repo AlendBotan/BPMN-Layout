@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(python3 -m http.server 8743)",
+      "Bash(echo \"PID: $!\")",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless=new --screenshot=/tmp/bpmn-drop.png --window-size=1280,800 --no-sandbox http://localhost:8743/)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8744/test.bpmn)",
+      "Bash(npx --yes playwright --version)"
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 // Bundles the two libraries the page needs into one browser file.
 import { layoutProcess } from 'bpmn-auto-layout';
-import NavigatedViewer from 'bpmn-js/lib/NavigatedViewer';
+import Modeler from 'bpmn-js/lib/Modeler';
 
-window.BpmnTools = { layoutProcess, NavigatedViewer };
+window.BpmnTools = { layoutProcess, Modeler };
